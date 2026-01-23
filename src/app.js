@@ -15,6 +15,11 @@ app.use(cors());
 app.use(express.json()); // Allows parsing JSON body
 app.use(morgan('dev'));  // Logger
 
+
+app.get('/', (req, res) => {
+  res.send('API is running successfully!');
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
