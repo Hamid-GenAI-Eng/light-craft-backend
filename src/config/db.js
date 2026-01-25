@@ -1,32 +1,39 @@
 const mongoose = require('mongoose');
-const User = require('../models/User');
+
+// Use a global variable to cache the connection across hot reloads in development
+// and across invocations in serverless environments (like Vercel).
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-
-    // --- AUTO-SEED SUPER ADMIN ---
-    const adminEmail = 'lightcraft@codeenvision.com';
-    const adminExists = await User.findOne({ email: adminEmail });
-
-    if (!adminExists) {
-      const superAdmin = new User({
-        name: 'Super Admin',
-        email: adminEmail,
-        password: 'ABC@123!', // This will be hashed by the pre-save hook in User model
-        role: 'Super Admin',
-      });
-
-      await superAdmin.save();
-      console.log('✅ Default Super Admin Created');
-    }
-    // -----------------------------
-
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
+  // If we have a cached connection, use it immediately
+  if (cached.conn) {
+    return cached.conn;
   }
+
+  // If no connection promise exists, create a new one
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false, // Disable Mongoose buffering to fail fast if not connected
+    };
+
+    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
+      console.log('✅ New MongoDB Connection Established');
+      return mongoose;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 };
 
 module.exports = connectDB;
