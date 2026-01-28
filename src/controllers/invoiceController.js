@@ -9,7 +9,6 @@ const generateInvoiceNumber = async () => {
   const lastNum = parseInt(lastInvoice.invoiceNumber.split('-')[1]);
   return `INV-${lastNum + 1}`;
 };
-
 // @desc    Create new Invoice & Update Stock
 // @route   POST /api/invoices
 // @access  Private
@@ -24,6 +23,7 @@ const createInvoice = async (req, res) => {
     // 1. Validate Stock & Calculate Totals
     let calculatedSubTotal = 0;
     const bulkOption = [];
+    const processedItems = []; // <--- NEW ARRAY TO STORE ITEMS WITH SUBTOTAL
 
     for (const item of items) {
       const product = await Product.findById(item.product);
@@ -41,6 +41,15 @@ const createInvoice = async (req, res) => {
       // Calculate Item Subtotal (Security check: don't trust frontend math)
       const itemSubtotal = item.price * item.quantity;
       calculatedSubTotal += itemSubtotal;
+
+      // <--- FIX: Add the calculated subtotal to the item object
+      processedItems.push({
+        product: item.product,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: itemSubtotal // Adding the required field here!
+      });
 
       // Prepare Stock Update Operation
       bulkOption.push({
@@ -62,7 +71,7 @@ const createInvoice = async (req, res) => {
       invoiceNumber,
       customerName,
       customerPhone,
-      items,
+      items: processedItems, // <--- FIX: Use the processed array, not the raw req.body items
       subTotal: calculatedSubTotal,
       taxRate,
       taxAmount,
