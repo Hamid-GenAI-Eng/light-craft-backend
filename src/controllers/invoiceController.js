@@ -9,12 +9,14 @@ const generateInvoiceNumber = async () => {
   const lastNum = parseInt(lastInvoice.invoiceNumber.split('-')[1]);
   return `INV-${lastNum + 1}`;
 };
+
 // @desc    Create new Invoice & Update Stock
 // @route   POST /api/invoices
 // @access  Private
 const createInvoice = async (req, res) => {
   try {
-    const { customerName, customerPhone, items, taxRate, paymentMethod } = req.body;
+    // --- CHANGED: Extract discountAmount instead of taxRate ---
+    const { customerName, customerPhone, items, discountAmount, paymentMethod } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ message: 'No items in invoice' });
@@ -23,7 +25,7 @@ const createInvoice = async (req, res) => {
     // 1. Validate Stock & Calculate Totals
     let calculatedSubTotal = 0;
     const bulkOption = [];
-    const processedItems = []; // <--- NEW ARRAY TO STORE ITEMS WITH SUBTOTAL
+    const processedItems = [];
 
     for (const item of items) {
       const product = await Product.findById(item.product);
@@ -38,31 +40,38 @@ const createInvoice = async (req, res) => {
         });
       }
 
-      // Calculate Item Subtotal (Security check: don't trust frontend math)
+      // Calculate Item Subtotal
       const itemSubtotal = item.price * item.quantity;
       calculatedSubTotal += itemSubtotal;
 
-      // <--- FIX: Add the calculated subtotal to the item object
+      // Add to processed items array
       processedItems.push({
         product: item.product,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
-        subtotal: itemSubtotal // Adding the required field here!
+        subtotal: itemSubtotal
       });
 
       // Prepare Stock Update Operation
       bulkOption.push({
         updateOne: {
           filter: { _id: item.product },
-          update: { $inc: { stock: -item.quantity } }, // Decrease stock
+          update: { $inc: { stock: -item.quantity } },
         },
       });
     }
 
-    // 2. Final Calculations
-    const taxAmount = (calculatedSubTotal * taxRate) / 100;
-    const grandTotal = calculatedSubTotal + taxAmount;
+    // --- CHANGED: Calculate Grand Total (Subtotal - Discount) ---
+    // Ensure discount is a valid number
+    const validDiscount = Number(discountAmount) || 0;
+    
+    // Safety check: Don't allow discount to make total negative
+    if (validDiscount > calculatedSubTotal) {
+      return res.status(400).json({ message: 'Discount cannot be greater than the total amount' });
+    }
+
+    const grandTotal = calculatedSubTotal - validDiscount;
 
     // 3. Create Invoice Record
     const invoiceNumber = await generateInvoiceNumber();
@@ -71,10 +80,9 @@ const createInvoice = async (req, res) => {
       invoiceNumber,
       customerName,
       customerPhone,
-      items: processedItems, // <--- FIX: Use the processed array, not the raw req.body items
+      items: processedItems,
       subTotal: calculatedSubTotal,
-      taxRate,
-      taxAmount,
+      discountAmount: validDiscount, // --- CHANGED ---
       grandTotal,
       paymentMethod,
       creator: req.user._id,
@@ -114,7 +122,7 @@ const getInvoices = async (req, res) => {
     }
 
     const invoices = await Invoice.find(query)
-      .populate('creator', 'name') // Show who sold it
+      .populate('creator', 'name')
       .sort({ createdAt: -1 });
 
     res.json(invoices);
@@ -129,7 +137,7 @@ const getInvoices = async (req, res) => {
 const getInvoiceById = async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id)
-      .populate('items.product', 'sku description') // Get SKU for the print view
+      .populate('items.product', 'sku description')
       .populate('creator', 'name');
 
     if (invoice) {

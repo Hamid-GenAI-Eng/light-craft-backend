@@ -8,7 +8,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   customerName: {
     type: String,
-    required: [true, 'Customer name is required'], // Can be "Walk-in Customer"
+    required: [true, 'Customer name is required'],
     trim: true,
   },
   customerPhone: {
@@ -22,9 +22,9 @@ const invoiceSchema = new mongoose.Schema({
         ref: 'Product',
         required: true,
       },
-      name: { type: String, required: true }, // Snapshot of name
+      name: { type: String, required: true },
       quantity: { type: Number, required: true, min: 1 },
-      price: { type: Number, required: true }, // Snapshot of sellingPrice
+      price: { type: Number, required: true },
       subtotal: { type: Number, required: true },
     }
   ],
@@ -32,13 +32,11 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
-  taxRate: {
+  // --- CHANGED: Removed Tax, Added Discount ---
+  discountAmount: {
     type: Number,
     default: 0,
-  },
-  taxAmount: {
-    type: Number,
-    default: 0,
+    min: 0,
   },
   grandTotal: {
     type: Number,
@@ -56,7 +54,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   creator: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Track which staff member made the sale
+    ref: 'User',
   }
 }, { timestamps: true });
 
