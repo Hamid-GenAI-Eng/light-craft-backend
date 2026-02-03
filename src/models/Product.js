@@ -11,20 +11,22 @@ const productSchema = new mongoose.Schema({
     required: [true, 'Please add a SKU/Barcode'],
     unique: true,
     trim: true,
-    uppercase: true, // Forces SKU to be consistent
+    uppercase: true,
   },
   description: {
     type: String,
-    required: false, // Optional
+    required: false,
   },
   costPrice: {
     type: Number,
-    required: false, // Optional
+    required: false,
     default: 0,
   },
+  // --- CHANGED: Selling Price is now OPTIONAL ---
   sellingPrice: {
     type: Number,
-    required: [true, 'Please add a selling price'],
+    required: false, // <--- No longer required
+    default: 0,      // Default to 0 if not provided
     min: 0,
   },
   stock: {
@@ -34,7 +36,7 @@ const productSchema = new mongoose.Schema({
   },
   image: {
     url: { type: String, default: '' },
-    public_id: { type: String, default: '' }, // Needed to delete image from Cloudinary later
+    public_id: { type: String, default: '' },
   },
 }, { timestamps: true });
 
