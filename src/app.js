@@ -22,9 +22,19 @@ app.use(async (req, res, next) => {
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json()); // Allows parsing JSON body
-app.use(morgan('dev'));  // Logger
+const corsOptions = {
+  origin: 'https://light-craft-zeta.vercel.app', // Your specific frontend
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Explicitly handle preflight for all routes
+
+app.use(express.json()); 
+app.use(morgan('dev'));
 
 
 app.get('/', (req, res) => {
