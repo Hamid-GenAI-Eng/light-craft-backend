@@ -18,10 +18,11 @@ const connectDB = async () => {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false, // Disable Mongoose buffering to fail fast if not connected
+      dbName: process.env.MONGODB_DB || 'LightCraft', // <--- UPDATED HERE
     };
 
-    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
-      console.log('✅ New MongoDB Connection Established');
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+      console.log(`✅ New MongoDB Connection Established to: ${opts.dbName}`);
       return mongoose;
     });
   }
