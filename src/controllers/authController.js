@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const connectDB = require('../config/db');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -13,6 +14,7 @@ const generateToken = (id) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
+    await connectDB();
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
