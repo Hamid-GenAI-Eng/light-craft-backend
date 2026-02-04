@@ -10,22 +10,16 @@ const connectDB = async () => {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
-      dbName: process.env.MONGODB_DB || 'LightCraft',
+      bufferCommands: false, // Prevents the 10s buffering hang
+      serverSelectionTimeoutMS: 5000, // Fails fast (5s) so you see the real error
     };
 
     cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then((mongoose) => {
-      console.log(`✅ MongoDB Connected`);
       return mongoose;
     });
   }
-
-  try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    throw e;
-  }
+  
+  cached.conn = await cached.promise;
   return cached.conn;
 };
 
