@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
+// 1. Import User model to check/create Admin
+const User = require('../models/User'); 
 
-// Use a global variable to cache the connection across hot reloads in development
-// and across invocations in serverless environments (like Vercel).
 let cached = global.mongoose;
 
 if (!cached) {
@@ -9,20 +9,43 @@ if (!cached) {
 }
 
 const connectDB = async () => {
-  // If we have a cached connection, use it immediately
   if (cached.conn) {
     return cached.conn;
   }
 
-  // If no connection promise exists, create a new one
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false, // Disable Mongoose buffering to fail fast if not connected
-      dbName: process.env.MONGODB_DB || 'LightCraft', // <--- UPDATED HERE
+      bufferCommands: false,
+      dbName: process.env.MONGODB_DB || 'LightCraft',
     };
 
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+    cached.promise = mongoose.connect(process.env.MONGO_URI, opts).then(async (mongoose) => {
       console.log(`✅ New MongoDB Connection Established to: ${opts.dbName}`);
+      
+      // 2. RESTORE THE SUPER ADMIN SEEDER HERE
+      try {
+        const adminEmail = 'lightcraft@codeenvision.com';
+        // We use the model directly here. 
+        // Note: Since this runs inside the connection promise, we need to be careful.
+        // Mongoose is connected at this point.
+        const adminExists = await User.findOne({ email: adminEmail });
+
+        if (!adminExists) {
+          const superAdmin = new User({
+            name: 'Super Admin',
+            email: adminEmail,
+            password: 'ABC@123!', // This will be hashed by User.js model pre-save hook
+            role: 'Super Admin',
+          });
+
+          await superAdmin.save();
+          console.log('✅ Default Super Admin Created in new DB');
+        }
+      } catch (seedError) {
+        console.error('Seeding Error:', seedError.message);
+        // Don't crash the connection if seeding fails, just log it
+      }
+
       return mongoose;
     });
   }
